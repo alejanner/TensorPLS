@@ -2,6 +2,26 @@
 
 An R package for exploring patterns in three-way omics data using PLS-DA.
 
+## Author
+Alessandro Giordano  
+PhD Student 
+
+## License
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
+
+You are free to use, modify, and redistribute this software under the terms of this license.  
+Any derivative work **must also be released under the same license** and must **credit the original author**.
+
+See the `LICENSE` file for details.
+
+## Citation
+If you use **TensorPLS** in academic work, please cite:
+
+Alessandro Giordano (2026). *TensorPLS: An R package for multi-way PLS-DA analysis*.  
+GitHub repository: https://github.com/alejanner/TensorPLS
+
+
+
 ---
 # Prerequisites
 
