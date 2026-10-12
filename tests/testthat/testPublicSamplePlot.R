@@ -35,8 +35,9 @@ test_that('plotting never invokes fitting or selection helpers', {
     nested_cv_tensorpls = forbidden,
     tensorpls_vips = forbidden, fit_tucker_imputer = forbidden, predict_tucker_imputer = forbidden,
     vip_feature_sets = forbidden, .package = 'TensorPLS')
-  local_mocked_bindings(pls = forbidden, plsda = forbidden, block.plsda = forbidden,
-    .package = 'mixOmics')
+  if (requireNamespace('mixOmics', quietly = TRUE))
+    local_mocked_bindings(pls = forbidden, plsda = forbidden, block.plsda = forbidden,
+      .package = 'mixOmics')
   grDevices::pdf(NULL)
   on.exit(grDevices::dev.off(), add = TRUE)
   expect_s3_class(plot_nplsda_scores(m), 'data.frame')

@@ -20,7 +20,8 @@ test_that('the public API calls the native core once with feature-fast unfolding
     native(X, Y, ncomp, ...)
   }, nested_cv_tensorpls = forbidden, fit_tucker_imputer = forbidden, vip_feature_sets = forbidden,
     .nested_vips = forbidden, .package = 'TensorPLS')
-  local_mocked_bindings(plsda = forbidden, pls = forbidden, .package = 'mixOmics')
+  if (requireNamespace('mixOmics', quietly = TRUE))
+    local_mocked_bindings(plsda = forbidden, pls = forbidden, .package = 'mixOmics')
   z <- fit_tensorpls_pls(d$X, d$Y, 3)
   expect_identical(calls, 1L)
   expect_identical(captured$Y, d$Y)

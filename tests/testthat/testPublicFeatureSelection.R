@@ -74,7 +74,8 @@ test_that('selection does not fit, recompute VIPs, or mutate its input', {
   local_mocked_bindings(fit_tensorpls_pls = forbidden, .tensorpls_fit = forbidden,
     nested_cv_tensorpls = forbidden,
     tensorpls_vips = forbidden, fit_tucker_imputer = forbidden, .package = 'TensorPLS')
-  local_mocked_bindings(pls = forbidden, plsda = forbidden, .package = 'mixOmics')
+  if (requireNamespace('mixOmics', quietly = TRUE))
+    local_mocked_bindings(pls = forbidden, plsda = forbidden, .package = 'mixOmics')
   for (s in .selection_strategies)
     expect_type(vip_feature_sets(v, thr = 99, strategy = s),
     'list')

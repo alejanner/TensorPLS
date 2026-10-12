@@ -86,8 +86,9 @@ test_that('profiles and heatmaps do not fit, recompute VIP or invoke permutation
     tensorpls_vips = forbidden,
     vip_feature_sets = forbidden, feature_selection = forbidden, nested_cv_tensorpls = forbidden,
     .package = 'TensorPLS')
-  local_mocked_bindings(pls = forbidden, plsda = forbidden, block.plsda = forbidden,
-    vip = forbidden, .package = 'mixOmics')
+  if (requireNamespace('mixOmics', quietly = TRUE))
+    local_mocked_bindings(pls = forbidden, plsda = forbidden, block.plsda = forbidden,
+      vip = forbidden, .package = 'mixOmics')
   q <- v$M2_mean
   q[] <- .01
   expect_no_warning(ggplot2::ggplotGrob(plot_temporal_vip_heatmap(v, padj = q)))
