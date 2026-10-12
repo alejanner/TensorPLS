@@ -98,8 +98,9 @@ test_that("temporal plotting invokes no fitting, VIP, selection or factor routin
     tensorpls_vips = forbidden,
     nested_cv_tensorpls = forbidden, vip_feature_sets = forbidden, feature_selection = forbidden,
     fit_tucker_imputer = forbidden, predict_tucker_imputer = forbidden, .package = "TensorPLS")
-  local_mocked_bindings(pls = forbidden, plsda = forbidden, block.plsda = forbidden,
-    vip = forbidden, .package = "mixOmics")
+  if (requireNamespace("mixOmics", quietly = TRUE))
+    local_mocked_bindings(pls = forbidden, plsda = forbidden, block.plsda = forbidden,
+      vip = forbidden, .package = "mixOmics")
   for (ref in c("none", "all"))
     for (disp in c("none", "IQR")) {
     p <- plot_temporal_vip(v, c("geneD", "geneB"), reference = ref, dispersion = disp)

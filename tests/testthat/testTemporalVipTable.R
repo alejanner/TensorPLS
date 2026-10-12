@@ -112,8 +112,9 @@ test_that('export does not fit, select, recompute VIPs or plot', {
       plot_nplsda_scores = forbidden,
     .package = 'TensorPLS')
   local_mocked_bindings(ggplot = forbidden, .package = 'ggplot2')
-  local_mocked_bindings(pls = forbidden, plsda = forbidden, block.plsda = forbidden,
-    vip = forbidden, .package = 'mixOmics')
+  if (requireNamespace('mixOmics', quietly = TRUE))
+    local_mocked_bindings(pls = forbidden, plsda = forbidden, block.plsda = forbidden,
+      vip = forbidden, .package = 'mixOmics')
   expect_s3_class(temporal_vip_table(v), 'data.frame')
   expect_s3_class(temporal_vip_table(v, nested = n), 'data.frame')
   expect_identical(serialize(list(v, n), NULL), before)
