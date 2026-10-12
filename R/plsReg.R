@@ -1,182 +1,92 @@
-#' PLS REGRESSION with incremental Q^2 
-#' PLS Regression with Incremental cross validation 
-#' @param X Matrice predictors (n x p)
-#' @param Y Matrice response (n x q)  
-#' @param ncomp Numero di componenti PLS (default: 2)
-#' @param cv Logico, se TRUE esegue cross-validation (default: TRUE)
-#'
-#' @details
-#' Q² Computing:
-#' Q²[h] = 1 - (PRESS[h] / RSS[h])
-#'  RSS[h] are residuals after h-1 components 
-#'
-#' Q²CUM : Q²cum[h] = 1 - ∏(1 - Q²[j]) per j=1:h
-#'
-#' @return list with components PLS, metrics of validations and predictions
-pls_reg <- function(X, Y, ncomp = 2, cv = TRUE) {
-  
-  # HELPER functions
-  .check_matrix <- function(A, name) {
-    if (!is.matrix(A)) stop(sprintf("%s should be a numeric matrix", name))
-    if (anyNA(A))      stop(sprintf("%s contain NA – needs imputation", name))
-    storage.mode(A) <- "double"
-  }
-  
-  .kfold <- function(n, k = 10) {
-    id <- rep_len(1:k, n)[sample.int(n)]
-    lapply(1:k, function(i) which(id == i))
-  }
-  
-  .vip <- function(W, R2y) {
-    p <- nrow(W); h <- ncol(W)
-    Rd <- matrix(0, h, h)
-    for (j in 1:h) Rd[1:j, j] <- R2y[1:j]
-    sqrt((W^2) %*% Rd %*% diag(p/cumsum(R2y), h))
-  }
-  
-  # Input validation
-  .check_matrix(X, "X"); .check_matrix(Y, "Y")
-  if (nrow(X) != nrow(Y)) stop("X and Y: #differents rows")
-  if (ncomp < 2)          stop("ncomp should be ≥2")
-  if (!is.logical(cv))    cv <- FALSE
-  
-  n  <- nrow(X); p <- ncol(X); q <- ncol(Y)
-  nc <- min(ncomp, n - 1, p)
-  
-  # Preprocessing
-  Xs <- scale(X); Ys <- scale(Y)
-  
-  # Component matrix initialization
-  W  <- matrix(0,  p, nc)    # Raw weights
-  Tt <- matrix(0,  n, nc)    # X-scores  
-  U  <- matrix(0,  n, nc)    # Y-scores
-  Cc <- matrix(0,  q, nc)    # Y-loadings
-  Pp <- matrix(0,  p, nc)    # X-loadings
-  
-  # Inizialization CROSS-VALIDATION incremental
-  if (cv) {
-    folds  <- .kfold(n, 10)
-    RSS    <- matrix(0, nc + 1, q)    
-    RSS[1, ] <- rep(n - 1, q)         
-    PRESS  <- matrix(0, nc, q)         
-    Q2     <- matrix(0, nc, q)        
-  }
-  
-  # Copies for deflation 
-  Xs_deflated <- Xs
-  Ys_deflated <- Ys
-  
-  # Algorithm PLS with incremental CROSS-VALIDATION 
-  for (h in 1:nc) {
-    
-    # Pls algorithm standard (NIPALS)
-    u <- Ys_deflated[, 1]; w <- rep(1, p)
-    
-    for (iter in 1:100) {
-      # Step 1: Weight vector from Y-scores
-      w_new <- t(Xs_deflated) %*% u / sum(u^2)
-      w_new <- w_new / sqrt(sum(w_new^2))
-      
-      # Step 2: X-scores from weights
-      t_new <- Xs_deflated %*% w_new
-      
-      # Step 3: Y-loadings from X-scores
-      c_new <- t(Ys_deflated) %*% t_new / sum(t_new^2)
-      
-      # Step 4: Y-scores from Y-loadings
-      u_new <- Ys_deflated %*% c_new / sum(c_new^2)
-      
-      # Convergence Test
-      if (sum((w_new - w)^2) < 1e-06) break
-      w <- w_new; u <- u_new
+# Training-only NIPALS core shared by ordinary and nested CV. No held-out Y input.
+.tensorpls_fit <- function(X, Y, ncomp, tolerance = 1e-6, max_iter = 100L) {
+  if (!is.matrix(X) || !is.matrix(Y) || !is.numeric(X) || !is.numeric(Y) || any(!is.finite(X)) ||
+    any(!is.finite(Y)))
+    stop("PLS needs finite numeric matrices.")
+  n <- nrow(X)
+  p <- ncol(X)
+  q <- ncol(Y)
+  if (nrow(Y) != n || ncomp > min(n - 1L, p) || ncomp < 1L)
+    stop("Insufficient training dimensions for requested ncomp.")
+  xm <- colMeans(X)
+  ym <- colMeans(Y)
+  xs <- apply(X, 2, stats::sd)
+  ys <- apply(Y, 2, stats::sd)
+  xs[xs == 0] <- 1
+  ys[ys == 0] <- 1
+  E <- sweep(sweep(X, 2, xm, "-"), 2, xs, "/")
+  F <- sweep(sweep(Y, 2, ym, "-"), 2, ys, "/")
+  W <- P <- matrix(0, p, ncomp)
+  Tt <- U <- matrix(0, n, ncomp)
+  C <- matrix(0, q, ncomp)
+  conv <- data.frame(component = seq_len(ncomp), converged = FALSE, iterations = 0L,
+    final_delta = NA_real_, tolerance = tolerance)
+  for (h in seq_len(ncomp)) {
+    u <- F[, 1L]
+    if (sum(u^2) < 1e-24)
+      u <- F[, which.max(colSums(F^2))]
+    w <- rep(1, p)
+    for (it in seq_len(max_iter)) {
+      wn <- as.vector(crossprod(E, u))
+      wn_norm <- sqrt(sum(wn^2))
+      if (!is.finite(wn_norm) || wn_norm < 1e-12)
+        stop("PLS exhausted numerical rank at component ", h)
+      wn <- wn / wn_norm
+      tn <- as.vector(E %*% wn)
+      tt <- sum(tn^2)
+      if (!is.finite(tt) || tt < 1e-12)
+        stop("PLS score has zero numerical variance.")
+      cn <- as.vector(crossprod(F, tn)) / tt
+      cc <- sum(cn^2)
+      if (!is.finite(cc) || cc < 1e-24)
+        stop("PLS response covariance exhausted.")
+      un <- as.vector(F %*% cn) / cc
+      delta <- sum((wn - w)^2)
+      if (delta < tolerance)
+        break
+      w <- wn
+      u <- un
     }
-    
-    # Step 5: X-loadings from X-scores
-    p_new <- t(Xs_deflated) %*% t_new / sum(t_new^2)
-    
-    # Saving components
-    W[, h]  <- w_new
-    Tt[, h] <- t_new
-    U[, h]  <- u_new
-    Cc[, h] <- c_new
-    Pp[, h] <- p_new
-    
-    # CROSS-VALIDATION incremental 
-    if (cv) {
-      # Compute RSS after this component (baseline for the next iteration)
-      RSS[h + 1, ] <- colSums((Ys_deflated - t_new %*% t(c_new))^2)
-      
-      # Cross-validation on deflated's data until h-1
-      press_fold <- matrix(0, length(folds), q)
-      
-      for (fold_idx in seq_along(folds)) {
-        idx <- folds[[fold_idx]]
-        
-        # Training and test on data deflated  
-        Xtr <- Xs_deflated[-idx, , drop = FALSE]
-        Ytr <- Ys_deflated[-idx, , drop = FALSE]
-        Xte <- Xs_deflated[idx, , drop = FALSE]
-        Yte <- Ys_deflated[idx, , drop = FALSE]
-        
-        # Algorithm PLS on training data of the fold 
-        u_cv <- Ytr[, 1]; w_cv <- rep(1, p)
-        for (iter in 1:100) {
-          w_new_cv <- t(Xtr) %*% u_cv / sum(u_cv^2)
-          w_new_cv <- w_new_cv / sqrt(sum(w_new_cv^2))
-          t_new_cv <- Xtr %*% w_new_cv
-          c_new_cv <- t(Ytr) %*% t_new_cv / sum(t_new_cv^2)
-          u_new_cv <- Ytr %*% c_new_cv / sum(c_new_cv^2)
-          if (sum((w_new_cv - w_cv)^2) < 1e-06) break
-          w_cv <- w_new_cv; u_cv <- u_new_cv
-        }
-        
-        # Predictions on tests data 
-        Yhat_cv <- (Xte %*% w_new_cv) %*% t(c_new_cv)
-        press_fold[fold_idx, ] <- colSums((Yte - Yhat_cv)^2)
-      }
-      
-      PRESS[h, ] <- colSums(press_fold)
-      
-      # *** Q² incremental. Dynamic baseline ***
-      Q2[h, ] <- 1 - (PRESS[h, ] / RSS[h, ])
-    }
-    
-    # Deflating fot the next component 
-    Xs_deflated <- Xs_deflated - t_new %*% t(p_new)
-    Ys_deflated <- Ys_deflated - t_new %*% t(c_new)
+    conv[h, c("converged", "iterations", "final_delta")] <- list(delta < tolerance, it, delta)
+    pn <- as.vector(crossprod(E, tn)) / tt
+    W[, h] <- wn
+    P[, h] <- pn
+    Tt[, h] <- tn
+    U[, h] <- un
+    C[, h] <- cn
+    E <- E - tcrossprod(tn, pn)
+    F <- F - tcrossprod(tn, cn)
   }
-  
-  Ws <- W %*% solve(t(Pp) %*% W, tol = 1e-20)
-  sdX <- apply(X, 2, sd);  sdX[sdX == 0] <- 1
-  sdY <- apply(Y, 2, sd);  sdY[sdY == 0] <- 1
-  
-  Bs  <- Ws %*% t(Cc)
-  Br  <- sweep(Bs, 1, sdX, "/")
-  Br  <- sweep(Br, 2, sdY, "*")
-  cte <- colMeans(Y) - colMeans(X) %*% Br
-  Yhat<- X %*% Br + matrix(rep(cte, each = n), n, q)
-  
-  VIP <- .vip(W, colMeans(cor(Y, Tt)^2))
-  
-  # Q²CUM Multiplicative 
-  if (cv) {
-    Q2cum <- matrix(0, nc, q)
-    Q2cum[1, ] <- Q2[1, ]
-    if (nc > 1) {
-      for (i in 2:nc) {
-        # Multiplicative Formula: Q²cum[i] = 1 - ∏(1 - Q²[j]) per j=1:i
-        Q2cum[i, ] <- 1 - apply(1 - Q2[1:i, , drop=FALSE], 2, prod)
-      }
-    }
-  } else {
-    Q2 <- Q2cum <- NULL
-  }
-  
-  structure(list(
-    x.scores = Tt, x.loads = Pp, y.scores = U, y.loads = Cc,
-    raw.wgs = W,   mod.wgs = Ws,
-    std.coefs = Bs, reg.coefs = rbind(Br, INTERCEPT = cte),
-    y.pred = Yhat, resid = Y - Yhat,
-    VIP = VIP,  Q2 = Q2, Q2cum = Q2cum),
-    class = "pls_reg")
+  # VIP uses squared response-score correlations.
+  cor2 <- suppressWarnings(stats::cor(Y, Tt)^2)
+  cor2[!is.finite(cor2)] <- 0
+  r2 <- colMeans(cor2)
+  Rd <- matrix(0, ncomp, ncomp)
+  for (j in seq_len(ncomp))
+    Rd[seq_len(j), j] <- r2[seq_len(j)]
+  denom <- cumsum(r2)
+  if (any(denom <= 0))
+    stop("VIP has no explained response signal.")
+  VIP <- sqrt((W^2) %*% Rd %*% diag(p / denom, ncomp))
+  Ws <- W %*% solve(crossprod(P, W), tol = 1e-20)
+  Bs <- Ws %*% t(C)
+  Br <- sweep(sweep(Bs, 1, xs, "/"), 2, ys, "*")
+  intercept <- as.vector(ym - xm %*% Br)
+  pred <- sweep(X %*% Br, 2, intercept, "+")
+  structure(list(x.scores = Tt, x.loads = P, y.scores = U, y.loads = C, raw.wgs = W,
+    mod.wgs = Ws, std.coefs = Bs, reg.coefs = rbind(Br, INTERCEPT = intercept), y.pred = pred,
+    resid = Y - pred, VIP = VIP, preprocessing = list(x_mean = xm, x_sd = xs, y_mean = ym,
+      y_sd = ys), convergence = conv, ncomp = ncomp, Q2 = NULL, Q2cum = NULL), class = "pls_reg")
+}
+.tensorpls_predict <- function(object, newdata, ncomp = object$ncomp) {
+  if (!is.matrix(newdata) || ncol(newdata) != nrow(object$raw.wgs) || any(!is.finite(newdata)))
+    stop("Prediction inputs must match training predictors and be finite.")
+  idx <- seq_len(ncomp)
+  w <- object$raw.wgs[, idx, drop = FALSE]
+  p <- object$x.loads[, idx, drop = FALSE]
+  coef <- w %*% solve(crossprod(p, w), tol = 1e-20) %*% t(object$y.loads[, idx, drop = FALSE])
+  z <- sweep(sweep(newdata, 2, object$preprocessing$x_mean, "-"), 2,
+    object$preprocessing$x_sd, "/")
+  sweep(sweep(z %*% coef, 2, object$preprocessing$y_sd, "*"), 2, object$preprocessing$y_mean,
+    "+")
 }

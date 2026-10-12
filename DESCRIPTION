@@ -3,10 +3,10 @@ Type: Package
 Title: an R package for exploring patterns in three-way omics data using N-PLS-DA
 Version: 0.1.0
 Authors@R: 
-    person("Alessandro", "Giordano", email = "alegiordano@unisa.it", role = c("aut", "cre"))
+    person("Alessandro", "Giordano", email = "alexjinnerjan@gmail.com", role = c("aut", "cre"))
 Description: Toolkit for reading, preprocessing, and constructing tensors from omics data,
     with modeling and feature selection based on Partial Least Squares (PLS) algorithms.
-License: MIT + file LICENSE
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
 Imports:
@@ -14,6 +14,7 @@ Imports:
     tools,
     arrow,
     ggplot2 (>= 3.4.0),
+    ggrepel (>= 0.9.0),
     rlang (>= 1.1.0),
     scales (>= 1.2.0),
     stats,

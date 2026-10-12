@@ -63,14 +63,4 @@ transposition becomes the column names.
 CSV/TSV are read with \code{read.csv()} / \code{read.delim()}.
 RDS via \code{readRDS()}. Feather / Parquet require the \strong{arrow} package.
 }
-\examples{
-tensor <- .build_tensor(df, id_col = "ID", time_col = "Time")
-
-# If 'example.csv' exists it is read, otherwise the string is returned
-.read_or_pass("example.csv")
-
-df <- data.frame(label = c("A","B"), x = 1:2, y = 3:4)
-.transpose_if_needed(df, mode = "auto")
-
-}
 \keyword{internal}

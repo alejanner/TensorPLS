@@ -10,9 +10,6 @@
 #'
 #' @return Either a 3-D numeric array or a 2-D numeric matrix.
 #'
-#' @examples
-#' tensor <- .build_tensor(df, id_col = "ID", time_col = "Time")
-#'
 #' @keywords internal
 #' @rdname helpers-internal
 #' 
@@ -21,9 +18,11 @@
 #'
 #'
 #' @keywords internal
-.build_tensor <- function(df, id_col, time_col, ..., deduplicate = c("first","last","mean")) {
+.build_tensor <- function(df, id_col, time_col, ..., deduplicate = c("first", "last",
+  "mean")) {
   if (is.null(time_col) || !(time_col %in% names(df))) {
     stop("`time_col` is missing or not present in the data; required for a 3-D tensor.")
   }
-  .create_array3d(df, id_col = id_col, time_col = time_col, ..., deduplicate = match.arg(deduplicate))
+  .create_array3d(df, id_col = id_col, time_col = time_col, ...,
+    deduplicate = match.arg(deduplicate))
 }

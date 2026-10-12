@@ -11,22 +11,52 @@ plot_nplsda_scores(
   pc1 = 1,
   pc2 = 2,
   variance = FALSE,
-  main_title = "NPLS-DA Score Plot"
+  main_title = "NPLS-DA Score Plot",
+  comp = c(1, 2)
 )
 }
 \arguments{
-\item{scores_matrix}{Matrix of scores (from NPLSDAvariates$X)}
+\item{scores_matrix}{A tensorpls_model from [fit_tensorpls_pls()], or a
+matrix of scores for the matrix-input interface.}
 
 \item{expl_var_matrix}{Matrix with variance explained (with R2.Y column)}
 
-\item{class_vec}{Factor vector with class labels}
+\item{class_vec}{Factor with class labels. For model input, optional display
+labels with the same subject assignments and level order as model classes.}
 
 \item{pc1}{First component to plot (default = 1)}
 
 \item{pc2}{Second component to plot (default = 2)}
 
+\item{variance}{Whether matrix-input axes display supplied variance values.
+Model input requires FALSE and uses plain component labels.}
+
 \item{main_title}{Plot title (default = "NPLS-DA Score Plot")}
+
+\item{comp}{Two distinct positive fitted component indices for model input.}
+}
+\value{
+Draws a base-R score plot. For model input, invisibly returns a
+  data frame with subject_id, x, y and class in model subject order.
+  For matrix input, invisibly returns NULL.
 }
 \description{
 Plot NPLS-DA Scores
+}
+\details{
+For model input, coordinates are taken directly from x_scores.
+  Subject classes come directly from model$training_class, a factor named
+  by subject_ids. Its class-level order is preserved. Model input requires
+  this field; missing training classes produce an error.
+  No model fitting, score transformation or scaling is performed.
+  This is descriptive visualization, not predictive validation.
+  Model input accepts comp, main_title and optional class_vec.
+  Points have class-dependent fills, black borders, and dashed zero-reference
+  lines. These lines are not classification boundaries.
+}
+\examples{
+set.seed(123)
+X <- array(rnorm(20 * 4 * 3), c(20, 4, 3))
+model <- fit_tensorpls_pls(X, factor(rep(c("A", "B"), 10)), 3)
+plot_nplsda_scores(model, comp = c(1, 3))
 }

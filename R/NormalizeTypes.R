@@ -24,33 +24,32 @@
 #' @return The normalized data.frame.
 #' @keywords internal
 #' @noRd
-normalize_types_by_spec <- function(
-    df,
-    id_col,
-    time_col,
-    feature_cols,
-    coercion_mode    = c("force_numeric","force_character","custom"),
-    id_as            = c("numeric","character"),
-    time_as          = c("numeric","character","date"),
-    features_numeric = TRUE,
-    na_strings       = c("", "NA","N/A","n/a",".","null")
-) {
+normalize_types_by_spec <- function(df, id_col, time_col, feature_cols,
+  coercion_mode = c("force_numeric",
+  "force_character", "custom"), id_as = c("numeric", "character"),
+    time_as = c("numeric", "character", "date"),
+  features_numeric = TRUE, na_strings = c("", "NA", "N/A", "n/a", ".",
+    "null")) {
   stopifnot(is.data.frame(df))
   coercion_mode <- match.arg(coercion_mode)
-  id_as   <- match.arg(id_as)
+  id_as <- match.arg(id_as)
   time_as <- match.arg(time_as)
-  
   # Macro → specific settings
   if (coercion_mode != "custom") {
     if (coercion_mode == "force_numeric") {
-      id_as <- "numeric"; time_as <- "numeric"; features_numeric <- TRUE
-    } else if (coercion_mode == "force_character") {
-      id_as <- "character"; time_as <- "character"; features_numeric <- FALSE
+      id_as <- "numeric"
+      time_as <- "numeric"
+      features_numeric <- TRUE
+    } else
+      if (coercion_mode == "force_character") {
+      id_as <- "character"
+      time_as <- "character"
+      features_numeric <- FALSE
     }
   }
-  
-  .num <- function(x) suppressWarnings(as.numeric(gsub(",", ".", as.character(x), fixed = FALSE)))
-  
+  .num <- function(x)
+    suppressWarnings(as.numeric(gsub(",", ".", as.character(x),
+    fixed = FALSE)))
   # Clean textual NAs and trim whitespace
   for (nm in names(df)) {
     x <- df[[nm]]
@@ -60,43 +59,50 @@ normalize_types_by_spec <- function(
       df[[nm]] <- x
     }
   }
-  
   # ID
   if (!is.null(id_col) && id_col %in% names(df)) {
     if (id_as == "numeric") {
       df[[id_col]] <- .num(df[[id_col]])
-    } else { # character
+    } else {
+      # character
       df[[id_col]] <- as.character(df[[id_col]])
     }
   }
-  
   # TIME
   if (!is.null(time_col) && time_col %in% names(df)) {
     tc <- df[[time_col]]
-    if (inherits(tc, c("Date","POSIXct","POSIXt"))) {
-      if (time_as == "numeric")      df[[time_col]] <- as.numeric(tc)
-      else if (time_as == "character") df[[time_col]] <- as.character(tc)
+    if (inherits(tc, c("Date", "POSIXct", "POSIXt"))) {
+      if (time_as == "numeric")
+        df[[time_col]] <- as.numeric(tc) else
+          if (time_as == "character")
+        df[[time_col]] <- as.character(tc)
       # "date": leave as is
     } else {
       if (time_as == "numeric") {
         df[[time_col]] <- .num(tc)
-      } else if (time_as == "character") {
+      } else
+        if (time_as == "character") {
         df[[time_col]] <- as.character(tc)
-      } else if (time_as == "date") {
-        tc_try  <- suppressWarnings(as.Date(tc))
+      } else
+        if (time_as == "date") {
+        tc_try <- suppressWarnings(as.Date(tc))
         tc_try2 <- suppressWarnings(as.POSIXct(tc))
-        if (!all(is.na(tc_try)))       df[[time_col]] <- tc_try
-        else if (!all(is.na(tc_try2))) df[[time_col]] <- tc_try2
-        else                            df[[time_col]] <- as.character(tc)
+        if (!all(is.na(tc_try)))
+          df[[time_col]] <- tc_try else
+            if (!all(is.na(tc_try2)))
+          df[[time_col]] <- tc_try2 else
+            df[[time_col]] <- as.character(tc)
       }
     }
   }
-  
   # FEATURES → numeric (optional)
   if (isTRUE(features_numeric)) {
-    feats <- if (is.null(feature_cols)) setdiff(names(df), c(id_col, time_col)) else feature_cols
-    for (nm in feats) if (nm %in% names(df)) df[[nm]] <- .num(df[[nm]])
+    feats <- if (is.null(feature_cols))
+      setdiff(names(df), c(id_col, time_col)) else
+        feature_cols
+    for (nm in feats)
+      if (nm %in% names(df))
+      df[[nm]] <- .num(df[[nm]])
   }
-  
   df
 }
