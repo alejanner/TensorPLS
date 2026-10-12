@@ -1,9 +1,38 @@
-.Rproj.user
+# R session and IDE state
 .Rhistory
+.RData
 .Rdata
-.httr-oauth
-.DS_Store
-.quarto
-inst/extdata/GCTOF_Data_Processed.csv
+.Ruserdata
 .RDataTmp
-inst/extdata/GeneExpressionDataProcessed.csv
+.Rproj.user/
+.quarto/
+Rplots.pdf
+
+# Local credentials and environment settings
+.httr-oauth
+.Renviron
+.Renviron.local
+.env
+.env.local
+
+# Operating-system and editor artifacts
+.DS_Store
+*~
+*.swp
+*.swo
+.#*
+
+# Package build and check outputs
+/TensorPLS_*.tar.gz
+*.Rcheck/
+
+# Local logs and temporary files
+/*.log
+/*.tmp
+
+# Generated analysis and example outputs
+/outputs/
+/temporal-vip-plots/
+/GSE68310_data/Analysis/
+/inst/extdata/vip_example_README.md
+/scripts/run_gse68310_sensitivity.R

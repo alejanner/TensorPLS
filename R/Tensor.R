@@ -54,87 +54,61 @@
 #' @return 3-D numeric array (Subject × Feature × Time).
 #'
 #' @examples
-#' raw_path    <- system.file("extdata", "GCTOF_Data_Processed.csv",
-#'                            package = "NPLS-Multiomi")
-#' cohort_path <- system.file("extdata", "CohortData.csv",
-#'                            package = "NPLS-Multiomi")
-#' arr <- prepare_omics(
-#'   data          = raw_path,
-#'   id_col        = "Individual.Id",
-#'   time_col      = "Time.to.IA",
-#'   transpose     = "always",
-#'   coercion_mode = "force_numeric",
-#'   cohort        = cohort_path,
-#'   cohort_id_col = "Group.Id",
-#'   cohort_filter = "Model.or.Validation=='Model'"
-#' )
+#' data <- data.frame(subject = rep(1:4, each = 3),
+#'                    time = rep(1:3, 4),
+#'                    feature1 = 1:12, feature2 = 13:24)
+#' arr <- prepare_omics(data, id_col = "subject", time_col = "time",
+#'                      transpose = "never")
 #' dim(arr)
 #'
 #' @export
-prepare_omics <- function(
-    data,
-    id_col,
-    time_col,
-    transpose          = "auto",
-    header_in_row      = TRUE,
-    cohort             = NULL,
-    cohort_id_col      = id_col,
-    cohort_filter      = NULL,
-    min_timepoints     = NULL,
-    exclude_cols       = NULL,
-    feature_cols       = NULL,
-    subjects           = NULL,
-    time_points        = NULL,
-    coercion_mode      = c("force_numeric","force_character","custom"),
-    id_as              = c("numeric","character"),
-    time_as            = c("numeric","character","date"),
-    features_numeric   = TRUE,
-    deduplicate        = c("first","last","mean")) {
-  
+prepare_omics <- function(data, id_col, time_col, transpose = "auto", header_in_row = TRUE,
+  cohort = NULL, cohort_id_col = id_col, cohort_filter = NULL, min_timepoints = NULL,
+  exclude_cols = NULL, feature_cols = NULL, subjects = NULL, time_points = NULL,
+    coercion_mode = c("force_numeric",
+    "force_character", "custom"), id_as = c("numeric", "character"),
+      time_as = c("numeric", "character",
+    "date"), features_numeric = TRUE, deduplicate = c("first", "last", "mean")) {
   coercion_mode <- match.arg(coercion_mode)
-  id_as         <- match.arg(id_as)
-  time_as       <- match.arg(time_as)
-  deduplicate   <- match.arg(deduplicate)
-  if (coercion_mode == "force_numeric") deduplicate <- "first"
-  
-  # (1) I/O + transpose
+  id_as <- match.arg(id_as)
+  time_as <- match.arg(time_as)
+  deduplicate <- match.arg(deduplicate)
+  if (coercion_mode == "force_numeric")
+    deduplicate <- "first"
+  # I/O + transpose
   obj <- .read_or_pass(data)
-  if (is.matrix(obj) || (is.array(obj) && length(dim(obj)) == 3L)) return(obj)
-  if (!is.data.frame(obj)) stop("Unsupported input type: ", paste(class(obj), collapse = ", "))
+  if (is.matrix(obj) || (is.array(obj) && length(dim(obj)) == 3L))
+    return(obj)
+  if (!is.data.frame(obj))
+    stop("Unsupported input type: ", paste(class(obj), collapse = ", "))
   obj <- .transpose_if_needed(obj, transpose, header_in_row)
-  # Immediate Errore if time Point is missing
+  # Require a time column before normalization.
   if (is.null(time_col) || !(time_col %in% names(obj))) {
     stop("`time_col` is missing or not present in the data; required for a 3-D tensor.")
   }
-  # (2) Type/NA normalization
-  obj <- normalize_types_by_spec(
-    df               = obj,
-    id_col           = id_col,
-    time_col         = time_col,
-    feature_cols     = feature_cols,
-    coercion_mode    = coercion_mode,
-    id_as            = id_as,
-    time_as          = time_as,
-    features_numeric = features_numeric
-  )
-  
-  # (3) Cohort filter (align ID types consistently across tables)
+  #  Type/NA normalization
+  obj <- normalize_types_by_spec(df = obj, id_col = id_col, time_col = time_col,
+    feature_cols = feature_cols,
+    coercion_mode = coercion_mode, id_as = id_as, time_as = time_as,
+      features_numeric = features_numeric)
+  #  Cohort filter (align ID types consistently across tables)
   if (!is.null(cohort)) {
     cdf <- .read_or_pass(cohort)
-    if (!is.data.frame(cdf)) stop("Cohort must be a data.frame or readable file.")
+    if (!is.data.frame(cdf))
+      stop("Cohort must be a data.frame or readable file.")
     if (cohort_id_col %in% names(cdf))
       names(cdf)[names(cdf) == cohort_id_col] <- id_col
     if (!is.null(cohort_filter))
       cdf <- cdf[with(cdf, eval(parse(text = cohort_filter))), ]
-    
     # Align ID type for the %in% join
     join_as_numeric <- FALSE
     if (coercion_mode == "force_numeric") {
       join_as_numeric <- TRUE
-    } else if (coercion_mode == "custom") {
-      join_as_numeric <- (id_as == "numeric")
-    } # force_character -> FALSE
-    
+    } else
+      if (coercion_mode == "custom")
+      {
+        join_as_numeric <- (id_as == "numeric")
+      }  # force_character -> FALSE
     if (join_as_numeric) {
       obj[[id_col]] <- suppressWarnings(as.numeric(as.character(obj[[id_col]])))
       cdf[[id_col]] <- suppressWarnings(as.numeric(as.character(cdf[[id_col]])))
@@ -147,18 +121,15 @@ prepare_omics <- function(
     if (nrow(obj) == 0L || !any(!is.na(obj[[time_col]]))) {
       stop("No valid time points after filtering/normalization; check ID/TIME types, cohort, and coercion settings.")
     }
-    
   }
-  
-  # (4) Minimum time-points
+  #  Minimum time-points
   if (!is.null(min_timepoints) && !is.null(time_col) && time_col %in% names(obj)) {
-    distinct_t_by_id <- tapply(obj[[time_col]], obj[[id_col]],
-                               function(x) length(unique(x)))
+    distinct_t_by_id <- tapply(obj[[time_col]], obj[[id_col]], function(x)
+      length(unique(x)))
     keep <- names(distinct_t_by_id)[distinct_t_by_id >= min_timepoints]
-    obj  <- obj[obj[[id_col]] %in% keep, ]
+    obj <- obj[obj[[id_col]] %in% keep, ]
   }
-  
-  # STOPP THATTTT---If Time points columsn doesn't exist 
+  # Validate time points after filtering.
   if (is.null(time_col) || !(time_col %in% names(obj))) {
     stop("`time_col` is missing or not present in the data; required for a 3-D tensor.")
   }
@@ -167,14 +138,10 @@ prepare_omics <- function(
     stop("No valid time points after filtering/normalization; check ID/TIME types, cohort, and coercion settings.")
   }
   # (5) Build tensor
-  excl <- unique(c(id_col, time_col, if (is.null(exclude_cols)) character() else exclude_cols))
-  .build_tensor(obj,
-                id_col = id_col,
-                time_col = time_col,
-                exclude_cols = excl,
-                feature_cols = feature_cols,
-                subjects = subjects,
-                time_points = time_points,
-                deduplicate = deduplicate
-  )
+  excl <- unique(c(id_col, time_col, if (is.null(exclude_cols))
+    character() else
+      exclude_cols))
+  .build_tensor(obj, id_col = id_col, time_col = time_col, exclude_cols = excl,
+    feature_cols = feature_cols,
+    subjects = subjects, time_points = time_points, deduplicate = deduplicate)
 }

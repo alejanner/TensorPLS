@@ -102,20 +102,11 @@ raised.
 }
 
 \examples{
-raw_path    <- system.file("extdata", "GCTOF_Data_Processed.csv",
-                           package = "NPLS-Multiomi")
-cohort_path <- system.file("extdata", "CohortData.csv",
-                           package = "NPLS-Multiomi")
-arr <- prepare_omics(
-  data          = raw_path,
-  id_col        = "Individual.Id",
-  time_col      = "Time.to.IA",
-  transpose     = "always",
-  coercion_mode = "force_numeric",
-  cohort        = cohort_path,
-  cohort_id_col = "Group.Id",
-  cohort_filter = "Model.or.Validation=='Model'"
-)
+data <- data.frame(subject = rep(1:4, each = 3),
+                   time = rep(1:3, 4),
+                   feature1 = 1:12, feature2 = 13:24)
+arr <- prepare_omics(data, id_col = "subject", time_col = "time",
+                     transpose = "never")
 dim(arr)
 
 }
