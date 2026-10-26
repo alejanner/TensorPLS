@@ -86,7 +86,8 @@ test_that("fold-specific scaling and selected identities match direct training-o
     expect_false(isTRUE(all.equal(unname(model$fit$preprocessing$x_mean), unname(colMeans(X[,
       model$columns, drop = FALSE])))))
     base <- .tensorpls_fit(X[tr, , drop = FALSE], d$Y[tr, , drop = FALSE], model$config$ncomp)
-    sets <- vip_feature_sets(.nested_vips(base, features, times), thr = 65)
+    sets <- vip_feature_sets(.nested_vips(base, features, times), thr = 65,
+      sources = c("VIP2D", "VIP3Dmodel2"))
     expect_setequal(model$selected_features, sets$sets$VIP2D_intersect_VIP3Dmodel2)
     expect_equal(model$vip, .nested_vips(base, features, times))
   }

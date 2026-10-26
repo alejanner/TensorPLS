@@ -10,6 +10,7 @@
 #'   the input and file type.
 #' @details CSV/TSV are read with `read.csv()` / `read.delim()`.  
 #'   RDS via `readRDS()`. Feather / Parquet require the **arrow** package.
+#' @importFrom utils read.csv read.delim
 #' @importFrom tools file_ext
 #' @importFrom arrow read_feather read_parquet
 #' @keywords internal

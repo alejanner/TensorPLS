@@ -27,54 +27,54 @@ Numerical rank exhaustion is reported by the native core.}
 \value{
 A list of class \code{tensorpls_model}, containing:
 \describe{
-  \item{ncomp}{The fixed fitted component count (integer).}
-  \item{feature_names, time_names, subject_ids}{Axis labels in input order.}
-  \item{training_class}{Factor of original training class assignments in
-    subject order, with levels from the response encoder and names equal
-    to subject_ids.}
-  \item{x_scores}{Native core x.scores (n x ncomp), unchanged.}
-  \item{x_weights}{Native raw.wgs ((p * k) x ncomp), unchanged.}
-  \item{x_loadings}{Native x.loads ((p * k) x ncomp), unchanged.}
-  \item{coefficients}{Native reg.coefs on the original response/predictor
-    scales, ((p * k + 1) x q). The last row is INTERCEPT.}
-  \item{fitted_y}{Native y.pred (n x q) for the encoded response.}
-  \item{fitted_R2Y}{Mean response-specific in-sample R2Y, a scalar.}
-  \item{fitted_R2Y_per_response}{Named vector of in-sample R2Y values.}
-  \item{response_encoding}{List with levels, binary, and response_names,
-    identifying the class coding and fitted-response column order.}
-  \item{preprocessing}{Native x_mean, x_sd, y_mean, and y_sd.}
-  \item{convergence}{Native per-component convergence data frame.}
-  \item{core_fit}{The unchanged native pls_reg fit, including its base VIP.}
+\item{ncomp}{The fixed fitted component count (integer).}
+\item{feature_names, time_names, subject_ids}{Axis labels in input order.}
+\item{training_class}{Factor of original training class assignments in
+subject order, with levels from the response encoder and names equal
+to subject_ids.}
+\item{x_scores}{Native core x.scores (n x ncomp), unchanged.}
+\item{x_weights}{Native raw.wgs ((p * k) x ncomp), unchanged.}
+\item{x_loadings}{Native x.loads ((p * k) x ncomp), unchanged.}
+\item{coefficients}{Native reg.coefs on the original response/predictor
+scales, ((p * k + 1) x q). The last row is INTERCEPT.}
+\item{fitted_y}{Native y.pred (n x q) for the encoded response.}
+\item{fitted_R2Y}{Mean response-specific in-sample R2Y, a scalar.}
+\item{fitted_R2Y_per_response}{Named vector of in-sample R2Y values.}
+\item{response_encoding}{List with levels, binary, and response_names,
+identifying the class coding and fitted-response column order.}
+\item{preprocessing}{Native x_mean, x_sd, y_mean, and y_sd.}
+\item{convergence}{Native per-component convergence data frame.}
+\item{core_fit}{The native TensorPLS fit, including its base VIP.}
 }
 }
 \description{
-Fit the same native PLS core used by [nested_cv_tensorpls()] to a complete
+Fit the same native PLS core used by \code{\link[=nested_cv_tensorpls]{nested_cv_tensorpls()}} to a complete
 tensor. This interface fits one model only: no imputation, cross-validation,
 component tuning, feature selection, or alternative PLS implementation.
 }
 \details{
 Unfolding is subjects x (features * time), with column
-  j = f + p * (t - 1). Centering and sample-SD scaling of X and encoded Y
-  are estimated on all supplied subjects by the native core.
+j = f + p * (t - 1). Centering and sample-SD scaling of X and encoded Y
+are estimated on all supplied subjects by the native core.
 
-  Supplied labels are preserved. When X has no subject labels, Y subject
-  labels are used if present; otherwise subject IDs are "1", "2", etc.
-  Unlabelled features use Var1, Var2, etc.; unlabelled times use Y time
-  labels if available, otherwise Time1, Time2, etc. Present labels must be
-  unique and nonempty; shared X/Y axes must match in order. No reordering
-  is performed. Native matrices are not relabelled: use the metadata to
-  identify their rows/columns while preserving native scores exactly.
+Supplied labels are preserved. When X has no subject labels, Y subject
+labels are used if present; otherwise subject IDs are "1", "2", etc.
+Unlabelled features use Var1, Var2, etc.; unlabelled times use Y time
+labels if available, otherwise Time1, Time2, etc. Present labels must be
+unique and nonempty; shared X/Y axes must match in order. No reordering
+is performed. Native matrices are not relabelled: use the metadata to
+identify their rows/columns while preserving native scores exactly.
 
-  For each encoded response, fitted R2Y is 1 - SSE/SST, where SSE is the
-  native training residual sum of squares and SST is the sum of squares
-  about that response's training mean. fitted_R2Y is the unweighted mean
-  of these response-specific values. It is an in-sample descriptive fit
-  statistic, not cross-validated or predictive performance. No accuracy
-  or AUC is calculated. A non-converged core fit is returned with a warning
-  and its native convergence diagnostics; it is not automatically refitted.
+For each encoded response, fitted R2Y is 1 - SSE/SST, where SSE is the
+native training residual sum of squares and SST is the sum of squares
+about that response's training mean. fitted_R2Y is the unweighted mean
+of these response-specific values. It is an in-sample descriptive fit
+statistic, not cross-validated or predictive performance. No accuracy
+or AUC is calculated. A non-converged core fit is returned with a warning
+and its native convergence diagnostics; it is not automatically refitted.
 
-  The core's base cumulative VIP matrix is retained only inside core_fit.
-  This function does not reshape or aggregate VIPs into TensorPLS summaries.
+The core's base cumulative VIP matrix is retained only inside core_fit.
+This function does not reshape or aggregate VIPs into TensorPLS summaries.
 }
 \examples{
 set.seed(123)

@@ -54,7 +54,7 @@ X[sample.int(length(X), round(0.05 * length(X)))] <- NA_real_
 `nested_cv_tensorpls()` evaluates imputation, component tuning, VIP-based feature selection and refitting without using outer-test subjects to develop the model. Here, feature selection retains the intersection of features selected by VIP2D and M1.
 
 ```r
-selection_strategy <- "VIP2D_intersect_VIP3Dmodel1"  # VIP2D ∩ M1
+selection_strategy <- "VIP2D_intersect_M1"  # VIP2D ∩ M1
 
 cv <- nested_cv_tensorpls(
   X = X,
@@ -223,7 +223,6 @@ In the exported table, `feature` identifies the selected molecular feature, `mea
 
 In `nested_cv_tensorpls()` and `tune_tensorpls_components()`, use `imputation = "training_mean"` for training-derived feature–time means, `"tucker"` for train/apply Tucker reconstruction, or `"none"` for complete data. Tucker ranks can be provided through `tucker_control = list(ranks = c(4L, 4L, 3L))`.
 
-**Do not impute the full dataset before nested cross-validation:** imputation must be fitted within the training partitions. Full-cohort imputation is used separately for molecular interpretation.
 
 ## Applications
 
@@ -245,5 +244,5 @@ The TensorPLS manuscript is in preparation. Until it is published, please cite t
 
 ## License
 
-TensorPLS is distributed under the **GNU General Public License v3 (GPL-3.0)**. See [LICENSE](LICENSE).
+TensorPLS is distributed under the **GNU General Public License v3 (GPL-3.0)**. See [LICENSE](LICENSE.md).
 

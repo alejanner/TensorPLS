@@ -3,7 +3,9 @@
 #' @param X Numeric subjects x features x time tensor with unique axis labels.
 #' @param Y Classification response accepted by [nested_cv_tensorpls()].
 #' @param ncomp Candidate integers from 1 to 10; duplicates are removed.
-#' @param feature_strategy One fixed strategy accepted by [vip_feature_sets()].
+#' @param feature_strategy One fixed strategy accepted by [vip_feature_sets()],
+#'   including M1 (all-time mean), M2 (cumulative-path mean), and their
+#'   ordered intersections. VIP3Dmodel2 uses cumulative-path sum selection.
 #' @param vip_thr One percentile in [0,100]; ignored for Original.
 #' @param cv_folds Number of stratified folds, at least two.
 #' @param seed Nonnegative integer seed; caller RNG state is preserved.
@@ -60,9 +62,7 @@ tune_tensorpls_components <- function(X, Y, ncomp = 1:10, feature_strategy = "Or
   if (length(dim(Y)) == 3L && (dim(Y)[3] != length(times) || (!is.null(dimnames(Y)[[3]]) &&
     !identical(dimnames(Y)[[3]], times))))
     stop("Y time axis must match X.", call. = FALSE)
-  strategies <- c("Original", "VIP2D", "VIP3Dmodel1", "VIP3Dmodel2",
-    "VIP2D_intersect_VIP3Dmodel1", "VIP2D_intersect_VIP3Dmodel2",
-      "VIP3Dmodel1_intersect_VIP3Dmodel2", "VIP2D_intersect_VIP3Dmodel1_intersect_VIP3Dmodel2")
+  strategies <- .vip_strategies()
   if (!is.character(feature_strategy) || length(feature_strategy) != 1L || is.na(feature_strategy) ||
     !feature_strategy %in% strategies)
     stop("feature_strategy must be one supported strategy.", call. = FALSE)
@@ -76,13 +76,21 @@ tune_tensorpls_components <- function(X, Y, ncomp = 1:10, feature_strategy = "Or
     folds <- .vip_with_seed(seed, function()
       stats::setNames(.nested_stratify(encoded$class,
       cv_folds), ids))
-  if (!is.numeric(folds) || is.complex(folds) || length(folds) != length(ids) || !identical(names(folds),
-    ids) || any(!is.finite(folds)) || any(folds < 1 | folds > cv_folds | folds !=
-    floor(folds)) || !identical(sort(unique(as.integer(folds))), seq_len(cv_folds)))
+  if (
+    !is.numeric(folds) ||
+    is.complex(folds) ||
+    length(folds) != length(ids) ||
+    !identical(names(folds), ids) ||
+    any(!is.finite(folds)) ||
+    any(folds < 1 | folds > cv_folds | folds != floor(folds)) ||
+    !identical(sort(unique(as.integer(folds))), seq_len(cv_folds))
+  )
     stop("folds must be numbered 1 through cv_folds in exact subject order.", call. = FALSE)
   for (f in seq_len(cv_folds)) {
-    if (!setequal(encoded$class[folds != f], encoded$levels) || !setequal(encoded$class[folds ==
-      f], encoded$levels))
+    if (
+      !setequal(encoded$class[folds != f], encoded$levels) ||
+      !setequal(encoded$class[folds == f], encoded$levels)
+    )
       stop("Every training and validation fold must contain all classes.", call. = FALSE)
   }
   method <- imputation
@@ -116,18 +124,33 @@ tune_tensorpls_components <- function(X, Y, ncomp = 1:10, feature_strategy = "Or
     message("Development CV: evaluating components, then refitting the chosen pipeline.")
   development <- .nested_develop(Xm, encoded$Y, encoded$class, encoded[c("levels", "binary")],
     features, times, folds, configurations, imputation, selection_metric)
-  structure(list(selected_ncomp = if (is.null(development$model))
-    NA_integer_ else
-      as.integer(development$model$config$ncomp),
-    tuning = development$tuning, fold_results = development$inner_results, folds = folds,
-    settings = list(feature_strategy = feature_strategy, vip_thr = configurations$thr[1],
-      ncomp = configurations$ncomp, cv_folds = cv_folds, seed = seed, imputation = method,
-      tucker_control = if (method == "tucker")
-        tucker_control else
-          NULL, input_provenance = input_provenance,
-      selection_metric = selection_metric,
-        score_interpretation = "Development tuning diagnostic, not unbiased predictive performance"), diagnostics = list(error = development$error,
-      provenance = note, imputation = development$imputation_diagnostics),
-        refit = development$model),
-    class = "tensorpls_component_tuning")
+  structure(
+    list(
+      selected_ncomp = if (is.null(development$model))
+        NA_integer_ else
+          as.integer(development$model$config$ncomp),
+      tuning = development$tuning,
+      fold_results = development$inner_results,
+      folds = folds,
+      settings = list(
+        feature_strategy = feature_strategy,
+        vip_thr = configurations$thr[1],
+        ncomp = configurations$ncomp,
+        cv_folds = cv_folds,
+        seed = seed,
+        imputation = method,
+        tucker_control = if (method == "tucker") tucker_control else NULL,
+        input_provenance = input_provenance,
+        selection_metric = selection_metric,
+        score_interpretation = "Development tuning diagnostic, not unbiased predictive performance"
+      ),
+      diagnostics = list(
+        error = development$error,
+        provenance = note,
+        imputation = development$imputation_diagnostics
+      ),
+      refit = development$model
+    ),
+    class = "tensorpls_component_tuning"
+  )
 }

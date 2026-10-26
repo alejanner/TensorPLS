@@ -2,56 +2,36 @@
 % Please edit documentation in R/tensorplsVips.R
 \name{tensorpls_vips}
 \alias{tensorpls_vips}
-\title{Expose cumulative VIP representations from a fitted TensorPLS model}
+\title{Extract structured VIP scores}
 \usage{
 tensorpls_vips(model)
 }
 \arguments{
-\item{model}{An unmodified \code{tensorpls_model} returned by
-[fit_tensorpls_pls()].}
+\item{model}{A \code{tensorpls_model} returned by \code{\link[=fit_tensorpls_pls]{fit_tensorpls_pls()}}.}
 }
 \value{
-A list of class \code{tensorpls_vips}, containing:
+A \code{tensorpls_vips} list containing:
 \describe{
-  \item{V}{Numeric array, p x k x H, with feature/time/component dimnames.}
-  \item{VIP2D}{The original (p * k) x H base cumulative VIP values, labelled.}
-  \item{VIP3Dmodel1}{Numeric matrix, p x H, averaging all k times.}
-  \item{VIP3Dmodel2}{Numeric matrix, p x k, summing all H cumulative VIP columns.}
-  \item{M2_mean}{Numeric matrix, p x k, averaging the same H columns.}
-  \item{feature_names, time_names}{Axis labels from model metadata.}
-  \item{component_names}{Comp1 through CompH (cumulative-component indices).}
-  \item{ncomp}{The fixed fitted component count H.}
+\item{V}{VIP array (features x time x components).}
+\item{VIP2D}{Unfolded VIP matrix (feature-time x components).}
+\item{VIP3Dmodel1}{M1 matrix (features x components).}
+\item{M2_mean}{M2 matrix (features x time).}
+\item{VIP3Dmodel2}{Cumulative VIP sum (features x time).}
+\item{feature_names, time_names, component_names, ncomp}{Dimension metadata.}
 }
 }
 \description{
-Reshape and average the base cumulative VIP values already stored by
-[fit_tensorpls_pls()]. This function never fits or refits a PLS model.
+Extract cumulative VIP scores from a fitted TensorPLS model and compute
+feature- and time-specific summaries without refitting.
 }
 \details{
-For p features, k times, and H fitted components, the existing
-  feature-fast unfolding is preserved exactly:
-  V[f, t, h] = VIP2D[f + p * (t - 1), h]. The h axis indexes the
-  cumulative PLS VIP path, not separate component contributions.
-
-  These are TensorPLS structured/derived summaries of the base cumulative
-  VIP representation. VIP3Dmodel1[f, h] averages over ALL k time points,
-  independently of H. VIP3Dmodel2[f, t] is the historical global sum over
-  all H cumulative VIP columns; M2_mean[f, t] is their arithmetic mean.
-  Thus VIP3Dmodel2 = H * M2_mean up to floating-point precision for a fixed
-  fitted model. Neither is a sum of independent component contributions.
-  Column h is the VIP for the cumulative h-component model.
-
-  No fitting, feature selection, thresholding, normalization of underlying
-  VIP values, or recomputation of the base VIP formula is performed.
-  M2_mean provides an explicitly mean-scaled alternative for comparison.
-  The former duplicate M1/M2 fields are removed: use VIP3Dmodel1/M2_mean.
-  Nested CV uses these same sum and mean field meanings.
-
-  VIP2D preserves the base matrix values, with feature_time row labels and
-  Comp1, Comp2, etc. column labels. V uses feature, time, and Comp labels.
-  VIP3Dmodel1 uses Comp1_meanTime, Comp2_meanTime, etc., consistently with the
-  all-time summaries; VIP3Dmodel2 and M2_mean use time labels. Singleton
-  dimensions are retained. The supplied model is not modified.
+\code{V[f,t,h]} contains VIP scores from the cumulative
+h-component model. The summaries are:
+\itemize{
+\item \code{VIP3Dmodel1} (M1): mean across time for each component.
+\item \code{M2_mean} (M2): mean across the cumulative component path.
+\item \code{VIP3Dmodel2}: sum across the cumulative component path.
+}
 }
 \examples{
 set.seed(123)
@@ -59,5 +39,6 @@ X <- array(rnorm(24 * 4 * 5), c(24, 4, 5))
 model <- fit_tensorpls_pls(X, factor(rep(c("Control", "Case"), 12)), 3)
 vips <- tensorpls_vips(model)
 dim(vips$V)
-vips$VIP3Dmodel1
+vips$M2_mean
+
 }

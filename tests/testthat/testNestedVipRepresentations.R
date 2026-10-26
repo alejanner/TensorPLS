@@ -17,8 +17,8 @@ test_that('nested and public VIP names agree on the same fit without changing pe
     mean_path <- nested
     mean_path$VIP3Dmodel2 <- nested$M2_mean
     for (thr in c(95, 99)) {
-      sums <- vip_feature_sets(nested, thr = thr)
-      means <- vip_feature_sets(mean_path, thr = thr)
+      sums <- vip_feature_sets(nested, thr = thr, sources = c("VIP2D", "VIP3Dmodel2"))
+      means <- vip_feature_sets(mean_path, thr = thr, sources = c("VIP2D", "VIP3Dmodel2"))
       for (strategy in c('VIP3Dmodel2', 'VIP2D_intersect_VIP3Dmodel2')) {
         expect_identical(sums$sets[[strategy]], means$sets[[strategy]])
         selected <- features[features %in% sums$sets[[strategy]]]

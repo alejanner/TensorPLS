@@ -4,9 +4,9 @@
     seq_len(p)), paste0('t', seq_len(k))))
   tensorpls_vips(fit_tensorpls_pls(X, factor(rep(c('a', 'b'), 10)), H))
 }
-.selection_strategies <- c('Original', 'VIP2D', 'VIP3Dmodel1', 'VIP3Dmodel2',
-  'VIP2D_intersect_VIP3Dmodel1', 'VIP2D_intersect_VIP3Dmodel2', 'VIP3Dmodel1_intersect_VIP3Dmodel2',
-  'VIP2D_intersect_VIP3Dmodel1_intersect_VIP3Dmodel2')
+.selection_strategies <- c('Original', 'VIP2D', 'M1', 'M2', 'VIP3Dmodel2',
+  'VIP2D_intersect_M1', 'VIP2D_intersect_M2', 'M1_intersect_M2',
+  'VIP2D_intersect_M1_intersect_M2', 'VIP2D_intersect_VIP3Dmodel2')
 test_that('single-strategy mode exactly preserves existing sets and tensor ordering', {
   for (d in list(c(4L, 5L, 3L), c(4L, 3L, 3L), c(3L,
     2L, 4L), c(1L, 3L, 2L), c(4L, 1L, 2L),
@@ -15,7 +15,7 @@ test_that('single-strategy mode exactly preserves existing sets and tensor order
     scaled <- v
     scaled$VIP3Dmodel2 <- v$M2_mean
     for (thr in c(0, 50, 95, 99, 100)) {
-      ref <- vip_feature_sets(v, thr = thr)
+      ref <- vip_feature_sets(v, thr = thr, sources = c("VIP2D", "M1", "M2", "VIP3Dmodel2"))
       for (s in .selection_strategies) {
         z <- vip_feature_sets(v, thr = thr, strategy = s)
         expected <- if (s == 'Original')
@@ -29,7 +29,8 @@ test_that('single-strategy mode exactly preserves existing sets and tensor order
         expect_identical(z$selected_indices, zz$selected_indices)
         for (nm in names(z$thresholds))
           expect_identical(z$thresholds[[nm]],
-          vapply(as.data.frame(v[[nm]]),
+          vapply(as.data.frame(v[[c(VIP2D = "VIP2D", M1 = "VIP3Dmodel1",
+            M2 = "M2_mean", VIP3Dmodel2 = "VIP3Dmodel2")[[nm]]]]),
           function(x)
             quantile(x, thr / 100, names = FALSE), numeric(1)))
       }
@@ -62,9 +63,9 @@ test_that('selection uses all columns, inclusive boundaries and exact feature ma
   expect_identical(vip_feature_sets(changed, thr = 100, strategy = 'VIP2D')$selected_features,
     c('gene_1', 'gene_2', 'gene_4'))
   v$VIP3Dmodel1[, ] <- c(0, 1, 1, 2)
-  z <- vip_feature_sets(v, thr = 50, strategy = 'VIP3Dmodel1')
+  z <- vip_feature_sets(v, thr = 50, strategy = 'M1')
   expect_identical(z$selected_features, c('gene_2', 'gene_3', 'gene_4'))
-  expect_identical(unname(z$thresholds$VIP3Dmodel1), c(1, 1))
+  expect_identical(unname(z$thresholds$M1), c(1, 1))
 })
 test_that('selection does not fit, recompute VIPs, or mutate its input', {
   v <- .selection_vips()
@@ -132,9 +133,9 @@ test_that('all existing percentile aggregators and set combinations preserve pos
     for (a in c('any', 'all', 'mean'))
       for (thr in c(0, 50, 99,
       100)) {
-      x <- vip_feature_sets(v, thr = thr, aggregator = a, combinations = c('individual',
+      x <- vip_feature_sets(v, thr = thr, aggregator = a, sources = c("VIP2D", "M1", "VIP3Dmodel2"), combinations = c('individual',
         'intersection', 'union'))
-      y <- vip_feature_sets(scaled, thr = thr, aggregator = a, combinations = c('individual',
+      y <- vip_feature_sets(scaled, thr = thr, aggregator = a, sources = c("VIP2D", "M1", "VIP3Dmodel2"), combinations = c('individual',
         'intersection', 'union'))
       expect_identical(x$sets, y$sets)
     }

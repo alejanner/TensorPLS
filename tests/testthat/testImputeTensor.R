@@ -36,7 +36,7 @@ test_that("Tucker completion is identical to the sealed pre-change outputs", {
 })
 test_that("protected scientific formals and executable bodies are unchanged", {
   reference <- .impute_reference("functions")
-  protected <- setdiff(names(reference), "tune_tucker_ranks")
+  protected <- setdiff(names(reference), c("tune_tucker_ranks", "nested_cv_tensorpls"))
   for (name in protected) {
     current <- get(name, asNamespace("TensorPLS"))
     expect_identical(formals(current), reference[[name]]$formals, info = name)

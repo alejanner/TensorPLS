@@ -14,7 +14,9 @@ tune_tensorpls_components(X, Y, ncomp = 1:10,
 \item{X}{Numeric subjects by features by time tensor with unique axis labels.}
 \item{Y}{Classification response accepted by \code{nested_cv_tensorpls()}.}
 \item{ncomp}{Candidate integers from 1 to 10; duplicates removed.}
-\item{feature_strategy}{One fixed strategy accepted by \code{vip_feature_sets()}.}
+\item{feature_strategy}{One fixed strategy accepted by \code{vip_feature_sets()},
+including M1 (all-time mean), M2 (cumulative-path mean), and their
+ordered intersections. VIP3Dmodel2 uses cumulative-path sum selection.}
 \item{vip_thr}{One percentile in [0,100]; ignored for Original.}
 \item{cv_folds}{Number of stratified folds, at least two.}
 \item{seed}{Nonnegative integer seed; caller RNG state is preserved.}

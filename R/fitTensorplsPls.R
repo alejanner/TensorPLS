@@ -73,8 +73,13 @@
 #' head(model$x_scores)
 #' @export
 fit_tensorpls_pls <- function(X, Y, ncomp) {
-  if (!is.numeric(X) || is.complex(X) || length(dim(X)) != 3L || any(dim(X) < 1L) ||
-    dim(X)[1L] < 2L)
+  if (
+    !is.numeric(X) ||
+    is.complex(X) ||
+    length(dim(X)) != 3L ||
+    any(dim(X) < 1L) ||
+    dim(X)[1L] < 2L
+  )
     stop("X must be a real numeric 3D tensor with at least two subjects and nonempty feature/time axes.", call. = FALSE)
   if (anyNA(X))
     stop("X contains missing values; impute X first before calling fit_tensorpls_pls().", call. = FALSE)
