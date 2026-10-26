@@ -2,7 +2,7 @@
 % Please edit documentation in R/plotScoresMode1.R
 \name{plot_nplsda_scores}
 \alias{plot_nplsda_scores}
-\title{Plot NPLS-DA Scores}
+\title{Plot TensorPLS scores}
 \usage{
 plot_nplsda_scores(
   scores_matrix,
@@ -11,12 +11,12 @@ plot_nplsda_scores(
   pc1 = 1,
   pc2 = 2,
   variance = FALSE,
-  main_title = "NPLS-DA Score Plot",
+  main_title = "TensorPLS Score Plot",
   comp = c(1, 2)
 )
 }
 \arguments{
-\item{scores_matrix}{A tensorpls_model from [fit_tensorpls_pls()], or a
+\item{scores_matrix}{A tensorpls_model from \code{\link[=fit_tensorpls_pls]{fit_tensorpls_pls()}}, or a
 matrix of scores for the matrix-input interface.}
 
 \item{expl_var_matrix}{Matrix with variance explained (with R2.Y column)}
@@ -31,28 +31,28 @@ labels with the same subject assignments and level order as model classes.}
 \item{variance}{Whether matrix-input axes display supplied variance values.
 Model input requires FALSE and uses plain component labels.}
 
-\item{main_title}{Plot title (default = "NPLS-DA Score Plot")}
+\item{main_title}{Plot title (default = "TensorPLS Score Plot")}
 
 \item{comp}{Two distinct positive fitted component indices for model input.}
 }
 \value{
 Draws a base-R score plot. For model input, invisibly returns a
-  data frame with subject_id, x, y and class in model subject order.
-  For matrix input, invisibly returns NULL.
+data frame with subject_id, x, y and class in model subject order.
+For matrix input, invisibly returns NULL.
 }
 \description{
-Plot NPLS-DA Scores
+Plot TensorPLS scores
 }
 \details{
 For model input, coordinates are taken directly from x_scores.
-  Subject classes come directly from model$training_class, a factor named
-  by subject_ids. Its class-level order is preserved. Model input requires
-  this field; missing training classes produce an error.
-  No model fitting, score transformation or scaling is performed.
-  This is descriptive visualization, not predictive validation.
-  Model input accepts comp, main_title and optional class_vec.
-  Points have class-dependent fills, black borders, and dashed zero-reference
-  lines. These lines are not classification boundaries.
+Subject classes come directly from model$training_class, a factor named
+by subject_ids. Its class-level order is preserved. Model input requires
+this field; missing training classes produce an error.
+No model fitting, score transformation or scaling is performed.
+This is descriptive visualization, not predictive validation.
+Model input accepts comp, main_title and optional class_vec.
+Points have class-dependent fills, black borders, and dashed zero-reference
+lines. These lines are not classification boundaries.
 }
 \examples{
 set.seed(123)

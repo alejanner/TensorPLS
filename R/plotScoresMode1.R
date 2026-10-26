@@ -1,4 +1,4 @@
-#' Plot NPLS-DA Scores
+#' Plot TensorPLS scores
 #'
 #' @param scores_matrix A tensorpls_model from [fit_tensorpls_pls()], or a
 #'   matrix of scores for the matrix-input interface.
@@ -10,7 +10,7 @@
 #' @param comp Two distinct positive fitted component indices for model input.
 #' @param variance Whether matrix-input axes display supplied variance values.
 #'   Model input requires FALSE and uses plain component labels.
-#' @param main_title Plot title (default = "NPLS-DA Score Plot")
+#' @param main_title Plot title (default = "TensorPLS Score Plot")
 #'
 #' @details For model input, coordinates are taken directly from x_scores.
 #'   Subject classes come directly from model$training_class, a factor named
@@ -29,9 +29,11 @@
 #' X <- array(rnorm(20 * 4 * 3), c(20, 4, 3))
 #' model <- fit_tensorpls_pls(X, factor(rep(c("A", "B"), 10)), 3)
 #' plot_nplsda_scores(model, comp = c(1, 3))
+#' @importFrom graphics abline legend par
+#' @importFrom stats setNames
 #' @export
 plot_nplsda_scores <- function(scores_matrix, expl_var_matrix, class_vec, pc1 = 1,
-  pc2 = 2, variance = FALSE, main_title = "NPLS-DA Score Plot", comp = c(1, 2)) {
+  pc2 = 2, variance = FALSE, main_title = "TensorPLS Score Plot", comp = c(1, 2)) {
   if (inherits(scores_matrix, "tensorpls_model")) {
     if (!missing(expl_var_matrix) || !missing(pc1) || !missing(pc2) || !identical(variance,
       FALSE))

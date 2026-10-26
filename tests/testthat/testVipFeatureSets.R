@@ -5,7 +5,7 @@ vip_test_input <- function() {
   }
   list(VIP2D = make(c("A", "B", "C"), paste0(LETTERS[1:5], "_T1")),
     VIP3Dmodel1 = make(c("B", "C", "D")), VIP3Dmodel2 = make(c("C",
-      "D", "E"), cn = "T1"))
+      "D", "E"), cn = "T1"), M2_mean = make(c("C", "D", "E"), cn = "T1"))
 }
 test_that("individuals, every intersection and unions are exact", {
   v <- vip_test_input()
@@ -13,18 +13,18 @@ test_that("individuals, every intersection and unions are exact", {
   fs <- vip_feature_sets(v, thr = 60, combinations = c("individual", "intersection", "union"))
   expect_s3_class(fs, "vip_feature_sets")
   expect_equal(fs$sets$VIP2D, c("A", "B", "C"))
-  expect_equal(fs$sets$VIP3Dmodel1, c("B", "C", "D"))
-  expect_equal(fs$sets$VIP3Dmodel2, c("C", "D", "E"))
-  expect_equal(fs$sets$VIP2D_intersect_VIP3Dmodel1, c("B", "C"))
-  expect_equal(fs$sets$VIP2D_intersect_VIP3Dmodel2, "C")
-  expect_equal(fs$sets$VIP3Dmodel1_intersect_VIP3Dmodel2, c("C", "D"))
-  expect_equal(fs$sets$VIP2D_intersect_VIP3Dmodel1_intersect_VIP3Dmodel2, "C")
-  expect_equal(fs$sets$VIP2D_union_VIP3Dmodel1, c("A", "B", "C", "D"))
-  expect_equal(fs$sets$VIP2D_union_VIP3Dmodel2, LETTERS[1:5])
-  expect_equal(fs$sets$VIP3Dmodel1_union_VIP3Dmodel2, LETTERS[2:5])
-  expect_equal(fs$sets$VIP2D_union_VIP3Dmodel1_union_VIP3Dmodel2, LETTERS[1:5])
+  expect_equal(fs$sets$M1, c("B", "C", "D"))
+  expect_equal(fs$sets$M2, c("C", "D", "E"))
+  expect_equal(fs$sets$VIP2D_intersect_M1, c("B", "C"))
+  expect_equal(fs$sets$VIP2D_intersect_M2, "C")
+  expect_equal(fs$sets$M1_intersect_M2, c("C", "D"))
+  expect_equal(fs$sets$VIP2D_intersect_M1_intersect_M2, "C")
+  expect_equal(fs$sets$VIP2D_union_M1, c("A", "B", "C", "D"))
+  expect_equal(fs$sets$VIP2D_union_M2, LETTERS[1:5])
+  expect_equal(fs$sets$M1_union_M2, LETTERS[2:5])
+  expect_equal(fs$sets$VIP2D_union_M1_union_M2, LETTERS[1:5])
   expect_equal(fs$summary$n_features, unname(lengths(fs$sets)))
-  expect_equal(fs$summary$sources[[4]], c("VIP2D", "VIP3Dmodel1"))
+  expect_equal(fs$summary$sources[[4]], c("VIP2D", "M1"))
   expect_equal(fs$summary$operation[4], "intersection")
   expect_identical(v, before)
 })
@@ -34,13 +34,13 @@ test_that("threshold, cols and aggregation use feature_selection semantics", {
   rownames(v$VIP3Dmodel1) <- LETTERS[1:5]
   for (a in c("any", "all", "mean"))
     for (t in c(0, 50, 99, 100)) {
-    fs <- vip_feature_sets(v, thr = t, sources = "VIP3Dmodel1", combinations = "individual",
+    fs <- vip_feature_sets(v, thr = t, sources = "M1", combinations = "individual",
       cols = 1:2, aggregator = a)
     expect_equal(fs$sets[[1]], feature_selection(v$VIP3Dmodel1, thr = t, cols = 1:2,
       aggregator = a))
     expect_equal(fs$settings$thr, t)
   }
-  expect_equal(vip_feature_sets(v, thr = 75, sources = "VIP3Dmodel1", combinations = "individual",
+  expect_equal(vip_feature_sets(v, thr = 75, sources = "M1", combinations = "individual",
     cols = "a")$sets[[1]], c("D", "E"))
   expect_error(vip_feature_sets(v, cols = "absent"), "unknown column")
 })
@@ -56,7 +56,7 @@ test_that("suffix mapping and duplicate identifiers are handled without renaming
   expect_error(vip_feature_sets(v), "inconsistent.*pattern")
   v$VIP3Dmodel1 <- matrix(c(1, 2, 3), 3, 1, dimnames = list(c("A",
     "A", "B"), "Comp1"))
-  expect_equal(vip_feature_sets(v, thr = 0, sources = "VIP3Dmodel1",
+  expect_equal(vip_feature_sets(v, thr = 0, sources = "M1",
     combinations = "individual")$sets[[1]],
     c("A", "B"))
   expect_equal(feature_selection(v$VIP3Dmodel1, thr = 0), c("A", "B"))
@@ -64,7 +64,7 @@ test_that("suffix mapping and duplicate identifiers are handled without renaming
   expect_equal(feature_selection(one), "A")
   # Gene names with a time-looking suffix must not be truncated automatically.
   v <- vip_test_input()
-  rownames(v$VIP3Dmodel1) <- rownames(v$VIP3Dmodel2) <- paste0(LETTERS[1:5],
+  rownames(v$M2_mean) <- rownames(v$VIP3Dmodel1) <- rownames(v$VIP3Dmodel2) <- paste0(LETTERS[1:5],
     "_T1")
   rownames(v$VIP2D) <- paste0(LETTERS[1:5], "_T1_T1")
   expect_equal(vip_feature_sets(v, thr = 60)$sets$VIP2D, c("A_T1", "B_T1", "C_T1"))
@@ -74,7 +74,7 @@ test_that("empty intersections are represented and malformed scores rejected", {
   v$VIP2D[, 1] <- c(5, 0, 0, 0, 0)
   v$VIP3Dmodel1[, 1] <- c(0, 5, 0, 0, 0)
   fs <- vip_feature_sets(v, thr = 100)
-  expect_equal(fs$sets$VIP2D_intersect_VIP3Dmodel1, character())
+  expect_equal(fs$sets$VIP2D_intersect_M1, character())
   expect_equal(fs$summary$n_features[4], 0)
   for (bad in list(-1, 101, NA_real_, Inf, "95", c(20, 30)))
     expect_error(vip_feature_sets(v,

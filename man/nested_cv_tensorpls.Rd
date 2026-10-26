@@ -33,7 +33,9 @@ nested_cv_tensorpls(
 \item{seed}{Reproducible fold seed, default 123; preserves caller RNG state.}
 
 \item{feature_strategy}{One strategy for fixed mode, or candidate strategies
-for tuned mode. Original skips VIP selection. Other names match vip_feature_sets.}
+for tuned mode. Original skips VIP selection. Names follow \code{\link[=vip_feature_sets]{vip_feature_sets()}},
+including M1 (all-time mean), M2 (cumulative-path mean), and ordered
+intersections. VIP3Dmodel2 uses cumulative-path sum selection.}
 
 \item{vip_thr}{Fixed percentile or candidate percentiles for tuned mode.}
 

@@ -7,7 +7,7 @@
 vip_feature_sets(
   vip_object,
   thr = 95,
-  sources = c("VIP2D", "VIP3Dmodel1", "VIP3Dmodel2"),
+  sources = c("VIP2D", "M1", "M2"),
   combinations = c("individual", "intersection"),
   cols = NULL,
   aggregator = c("any", "mean", "all"),
@@ -21,64 +21,70 @@ vip_feature_sets(
 \item{vip_object}{A named list containing the
 requested numeric VIP matrices/data frames with explicit feature row names.}
 
-\item{thr}{Percentile in `[0,100]`, passed to [feature_selection()].}
+\item{thr}{Percentile in \verb{[0,100]}, passed to \code{\link[=feature_selection]{feature_selection()}}.}
 
-\item{sources}{VIP definitions to use, in output order.}
+\item{sources}{Distinct names from \code{VIP2D}, \code{M1}, \code{M2}, \code{VIP3Dmodel2},
+in output order. Defaults to \code{c("VIP2D", "M1", "M2")}.}
 
-\item{combinations}{Any of `"individual"`, `"intersection"`, `"union"`.}
+\item{combinations}{Any of \code{"individual"}, \code{"intersection"}, \code{"union"}.}
 
-\item{cols, aggregator, na.rm}{Passed to [feature_selection()]. The same column
+\item{cols, aggregator, na.rm}{Passed to \code{\link[=feature_selection]{feature_selection()}}. The same column
 selection is applied to each source; use column indices when names differ.}
 
 \item{strip_time}{Whether to resolve feature/time identifiers to features.}
 
-\item{pattern}{Optional suffix regex passed to [feature_selection()] for
-every source. With `NULL`, only VIP2D names are mapped using the exact
-feature/time names in VIP3Dmodel2 (`feature_time`). This avoids stripping
+\item{pattern}{Optional suffix regex passed to \code{\link[=feature_selection]{feature_selection()}} for
+every source. With \code{NULL}, only VIP2D names are mapped using the exact
+feature/time names in VIP3Dmodel2 (\code{feature_time}). This avoids stripping
 meaningful suffixes from gene names. Nonstandard names require a pattern.}
 
-\item{strategy}{Optional single strategy for a `tensorpls_vips` object:
-`Original`, a VIP source name, or a pairwise/triple `_intersect_` name
-in VIP2D, VIP3Dmodel1, VIP3Dmodel2 order. NULL returns all requested sets.
-Single-strategy mode uses all columns, `aggregator = "any"`, exact
+\item{strategy}{Optional single strategy for a \code{tensorpls_vips} object:
+\code{Original}, \code{VIP2D}, \code{M1}, \code{M2}, \code{VIP3Dmodel2}, ordered intersections
+of VIP2D, M1 and M2, or \code{VIP2D_intersect_VIP3Dmodel2}.
+NULL returns all requested sets.
+Single-strategy mode uses all columns, \code{aggregator = "any"}, exact
 feature/time mapping, and the default sources/combinations/options.}
 }
 \value{
-An S3 `vip_feature_sets` list: `sets` (named character vectors),
-  `summary` (feature_set, n_features, operation and list-column sources),
-  `selection` (source-level counts, including collapsed identifiers), and
-  `settings`. Empty intersections are retained. Repeated identifiers are
-  deduplicated after percentile selection, including repeated time rows.
-  With `strategy` supplied, returns only `selected_features`,
-  `selected_indices` (in input feature order), `strategy`, `percentile`
-  (thr/100), and `thresholds` (named per-column vectors for used sources).
-  `Original` returns every feature and an empty threshold list.
+An S3 \code{vip_feature_sets} list: \code{sets} (named character vectors),
+\code{summary} (feature_set, n_features, operation and list-column sources),
+\code{selection} (source-level counts, including collapsed identifiers), and
+\code{settings}. Empty intersections are retained. Repeated identifiers are
+deduplicated after percentile selection, including repeated time rows.
+With \code{strategy} supplied, returns only \code{selected_features},
+\code{selected_indices} (in input feature order), \code{strategy}, \code{percentile}
+(thr/100), and \code{thresholds} (named per-column vectors for used sources).
+\code{Original} returns every feature and an empty threshold list.
 }
 \description{
-Apply [feature_selection()] to each requested VIP definition, then construct
+Apply \code{\link[=feature_selection]{feature_selection()}} to each requested VIP definition, then construct
 individual sets and all pairwise/triple intersections or unions.
-VIP definitions and percentile rules are not changed.
 }
 \details{
-Single-strategy selection uses all cumulative VIP2D and
-  VIP3Dmodel1 columns, including earlier columns, not only the final one.
-  Each column has its own type-7 quantile at thr/100; a row passes if its
-  value is greater than or equal to that threshold in any column.
-  VIP2D quantiles span all feature/time rows within each component column;
-  selected rows map to features and are deduplicated. VIP3Dmodel1 quantiles
-  span features per cumulative column; VIP3Dmodel2 quantiles span features
-  separately per time. Intersections combine these feature-level sets.
-  No fitting or VIP recomputation occurs, and the input is unchanged.
-  Percentiles include all ties and need not select a fixed number of genes.
+M1 reads \code{VIP3Dmodel1}, the mean across all times for each
+feature/component pair. M2 reads \code{M2_mean}, the mean across the
+cumulative VIP path for each feature/time pair. \code{VIP3Dmodel2} reads
+the sum across that path. Sum and mean selection can differ at
+floating-point quantile boundaries.
 
-  This is exploratory selection on the supplied VIP scores, not
-  independent validation. With `strip_time = FALSE`, composite VIP2D names
-  remain unchanged and may not match a tensor's feature names.
+Single-strategy selection uses all cumulative VIP2D and M1 columns.
+Each column has its own type-7 quantile at thr/100; a row passes if its
+value is greater than or equal to that threshold in any column.
+VIP2D quantiles span all feature/time rows within each component column;
+selected rows map to features and are deduplicated. M1 quantiles span
+features per cumulative column; M2 and VIP3Dmodel2 quantiles span
+features per time. Intersections combine these feature-level sets.
+No fitting or VIP recomputation occurs, and the input is unchanged.
+Percentiles include all ties and need not select a fixed number of genes.
+
+This is exploratory selection on the supplied VIP scores, not
+independent validation. With \code{strip_time = FALSE}, composite VIP2D names
+remain unchanged and may not match a tensor's feature names.
 }
 \examples{
 vip <- matrix(c(1, 4, 3, 2), 4, 1,
               dimnames = list(LETTERS[1:4], "Comp1"))
 sets <- vip_feature_sets(list(VIP3Dmodel1 = vip), thr = 50,
-                        sources = "VIP3Dmodel1", combinations = "individual")
+                        sources = "M1", combinations = "individual")
 sets$sets
 }

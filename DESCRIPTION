@@ -1,29 +1,40 @@
 Package: TensorPLS
 Type: Package
-Title: an R package for exploring patterns in three-way omics data using N-PLS-DA
+Title: PLS-DA and Temporal VIP Analysis for Longitudinal Omics Data
 Version: 0.1.0
-Authors@R: 
+Authors@R:
     person("Alessandro", "Giordano", email = "alexjinnerjan@gmail.com", role = c("aut", "cre"))
-Description: Toolkit for reading, preprocessing, and constructing tensors from omics data,
-    with modeling and feature selection based on Partial Least Squares (PLS) algorithms.
+Description: Analyses longitudinal omics data using partial least squares
+    discriminant analysis (PLS-DA) on matrices obtained by unfolding
+    subject-by-feature-by-time tensors. Supports data preparation,
+    missing-data imputation using feature-time means or Tucker3
+    reconstruction, VIP-based feature selection, temporal interpretation
+    of molecular importance, and subject-level nested cross-validation
+    for predictive assessment. Includes gene-based functional enrichment
+    analysis using Gene Ontology Biological Process, Reactome and MSigDB
+    Hallmark gene sets with an explicit gene universe.
 License: GPL-3
 Encoding: UTF-8
-LazyData: true
 Imports:
-    yaml,
     tools,
     arrow,
     ggplot2 (>= 3.4.0),
-    ggrepel (>= 0.9.0),
     rlang (>= 1.1.0),
-    scales (>= 1.2.0),
     stats,
     VennDiagram,
     grid,
-    gridExtra
+    graphics,
+    utils
 Suggests:
-    testthat (>= 3.1.0)
+    testthat (>= 3.2.0),
+    AnnotationDbi,
+    org.Hs.eg.db,
+    clusterProfiler,
+    ReactomePA,
+    GO.db,
+    reactome.db,
+    DOSE
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
 URL: https://github.com/alejanner/TensorPLS
 BugReports: https://github.com/alejanner/TensorPLS/issues
+Config/roxygen2/version: 8.1.1

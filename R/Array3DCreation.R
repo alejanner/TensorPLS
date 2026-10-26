@@ -3,6 +3,7 @@
 #' Robust 3-D tensor construction with tolerant numeric conversion for features
 #' and flexible time handling (Date/POSIXct, numeric-like, or character labels).
 #'
+#' @importFrom stats aggregate
 #' @keywords internal
 #' @noRd
 .create_array3d <- function(df, id_col, time_col, feature_cols = NULL, exclude_cols = c(id_col,

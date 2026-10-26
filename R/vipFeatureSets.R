@@ -7,11 +7,13 @@
 #'   requested numeric VIP matrices/data frames with explicit feature row names.
 #' @param thr Percentile in `[0,100]`, passed to [feature_selection()].
 #' @param strategy Optional single strategy for a `tensorpls_vips` object:
-#'   `Original`, a VIP source name, or a pairwise/triple `_intersect_` name
-#'   in VIP2D, VIP3Dmodel1, VIP3Dmodel2 order. NULL returns all requested sets.
+#'   `Original`, `VIP2D`, `M1`, `M2`, `VIP3Dmodel2`, ordered intersections
+#'   of VIP2D, M1 and M2, or `VIP2D_intersect_VIP3Dmodel2`.
+#'   NULL returns all requested sets.
 #'   Single-strategy mode uses all columns, `aggregator = "any"`, exact
 #'   feature/time mapping, and the default sources/combinations/options.
-#' @param sources VIP definitions to use, in output order.
+#' @param sources Distinct names from `VIP2D`, `M1`, `M2`, `VIP3Dmodel2`,
+#'   in output order. Defaults to `c("VIP2D", "M1", "M2")`.
 #' @param combinations Any of `"individual"`, `"intersection"`, `"union"`.
 #' @param cols,aggregator,na.rm Passed to [feature_selection()]. The same column
 #'   selection is applied to each source; use column indices when names differ.
@@ -30,14 +32,19 @@
 #'   `selected_indices` (in input feature order), `strategy`, `percentile`
 #'   (thr/100), and `thresholds` (named per-column vectors for used sources).
 #'   `Original` returns every feature and an empty threshold list.
-#' @details Single-strategy selection uses all cumulative VIP2D and
-#'   VIP3Dmodel1 columns, including earlier columns, not only the final one.
+#' @details M1 reads `VIP3Dmodel1`, the mean across all times for each
+#'   feature/component pair. M2 reads `M2_mean`, the mean across the
+#'   cumulative VIP path for each feature/time pair. `VIP3Dmodel2` reads
+#'   the sum across that path. Sum and mean selection can differ at
+#'   floating-point quantile boundaries.
+#'
+#'   Single-strategy selection uses all cumulative VIP2D and M1 columns.
 #'   Each column has its own type-7 quantile at thr/100; a row passes if its
 #'   value is greater than or equal to that threshold in any column.
 #'   VIP2D quantiles span all feature/time rows within each component column;
-#'   selected rows map to features and are deduplicated. VIP3Dmodel1 quantiles
-#'   span features per cumulative column; VIP3Dmodel2 quantiles span features
-#'   separately per time. Intersections combine these feature-level sets.
+#'   selected rows map to features and are deduplicated. M1 quantiles span
+#'   features per cumulative column; M2 and VIP3Dmodel2 quantiles span
+#'   features per time. Intersections combine these feature-level sets.
 #'   No fitting or VIP recomputation occurs, and the input is unchanged.
 #'   Percentiles include all ties and need not select a fixed number of genes.
 #'
@@ -48,18 +55,24 @@
 #' vip <- matrix(c(1, 4, 3, 2), 4, 1,
 #'               dimnames = list(LETTERS[1:4], "Comp1"))
 #' sets <- vip_feature_sets(list(VIP3Dmodel1 = vip), thr = 50,
-#'                         sources = "VIP3Dmodel1", combinations = "individual")
+#'                         sources = "M1", combinations = "individual")
 #' sets$sets
 #' @export
-vip_feature_sets <- function(vip_object, thr = 95, sources = c("VIP2D", "VIP3Dmodel1",
-  "VIP3Dmodel2"), combinations = c("individual", "intersection"), cols = NULL, aggregator = c("any",
-  "mean", "all"), strip_time = TRUE, pattern = NULL, na.rm = TRUE, strategy = NULL) {
+vip_feature_sets <- function(vip_object, thr = 95, sources = c("VIP2D", "M1", "M2"),
+  combinations = c("individual", "intersection"), cols = NULL,
+  aggregator = c("any", "mean", "all"), strip_time = TRUE, pattern = NULL,
+  na.rm = TRUE, strategy = NULL) {
   aggregator <- match.arg(aggregator)
   if (!is.null(strategy)) {
-    if (!identical(sources, c("VIP2D", "VIP3Dmodel1", "VIP3Dmodel2")) || !identical(combinations,
-      c("individual",
-        "intersection")) || !is.null(cols) || aggregator != "any" || !identical(strip_time,
-      TRUE) || !is.null(pattern) || !identical(na.rm, TRUE))
+    if (
+      !identical(sources, c("VIP2D", "M1", "M2")) ||
+      !identical(combinations, c("individual", "intersection")) ||
+      !is.null(cols) ||
+      aggregator != "any" ||
+      !identical(strip_time, TRUE) ||
+      !is.null(pattern) ||
+      !identical(na.rm, TRUE)
+    )
       stop("Single-strategy mode requires default sources, combinations, cols, aggregator, strip_time, pattern and na.rm.", call. = FALSE)
     return(.vip_select_strategy(vip_object, strategy, thr))
   }
@@ -68,12 +81,14 @@ vip_feature_sets <- function(vip_object, thr = 95, sources = c("VIP2D", "VIP3Dmo
     stop("thr must be one finite percentile between 0 and 100.", call. = FALSE)
   .vip_flag(strip_time, "strip_time")
   .vip_flag(na.rm, "na.rm")
-  allowed <- c("VIP2D", "VIP3Dmodel1", "VIP3Dmodel2")
+  fields <- .vip_source_fields()
+  allowed <- names(fields)
   if (!is.character(sources) || !length(sources) || anyNA(sources) || anyDuplicated(sources) ||
     !all(sources %in% allowed))
-    stop("sources must be distinct VIP2D, VIP3Dmodel1 or VIP3Dmodel2 names.", call. = FALSE)
-  if (!is.list(vip_object) || !all(sources %in% names(vip_object)))
-    stop("vip_object is missing requested VIP sources: ", paste(setdiff(sources,
+    stop("sources must be distinct VIP2D, M1, M2 or VIP3Dmodel2 names.", call. = FALSE)
+  backing <- unname(fields[sources])
+  if (!is.list(vip_object) || !all(backing %in% names(vip_object)))
+    stop("vip_object is missing requested VIP sources: ", paste(setdiff(backing,
       names(vip_object)), collapse = ", "),
       call. = FALSE)
   if (!is.character(combinations) || !length(combinations) || anyNA(combinations) ||
@@ -91,13 +106,21 @@ vip_feature_sets <- function(vip_object, thr = 95, sources = c("VIP2D", "VIP3Dmo
   audit <- vector("list", length(sources))
   for (i in seq_along(sources)) {
     src <- sources[i]
-    v <- vip_object[[src]]
-    if (!(is.matrix(v) || is.data.frame(v)) || !nrow(v) || !ncol(v) || !all(vapply(as.data.frame(v),
-      is.numeric, logical(1))))
+    v <- vip_object[[fields[[src]]]]
+    if (
+      !(is.matrix(v) || is.data.frame(v)) ||
+      !nrow(v) ||
+      !ncol(v) ||
+      !all(vapply(as.data.frame(v), is.numeric, logical(1)))
+    )
       stop(src, " must be a nonempty numeric matrix or data frame.", call. = FALSE)
     ids <- rownames(v)
-    if (is.null(ids) || anyNA(ids) || any(!nzchar(ids)) || (is.data.frame(v) && .row_names_info(v,
-      1L) < 0L))
+    if (
+      is.null(ids) ||
+      anyNA(ids) ||
+      any(!nzchar(ids)) ||
+      (is.data.frame(v) && .row_names_info(v, 1L) < 0L)
+    )
       stop(src, " requires explicit, nonempty feature row names.", call. = FALSE)
     if (any(is.infinite(as.matrix(v))))
       stop(src, " contains infinite VIP scores.", call. = FALSE)
@@ -116,8 +139,7 @@ vip_feature_sets <- function(vip_object, thr = 95, sources = c("VIP2D", "VIP3Dmo
       rownames(v) <- rep(features, length(times))[match(ids, keys)]
     }
     args <- list(vip = v, thr = thr, cols = cols, aggregator = aggregator,
-      strip_time = strip_time &&
-      !is.null(pattern), na.rm = na.rm)
+      strip_time = strip_time && !is.null(pattern), na.rm = na.rm)
     if (!is.null(pattern))
       args$pattern <- pattern
     selected <- tryCatch(do.call(feature_selection, args), error = function(e)
@@ -198,13 +220,14 @@ print.vip_feature_sets <- function(x, ...) {
   invisible(x)
 }
 .vip_select_strategy <- function(vips, strategy, thr) {
-  sources <- c("VIP2D", "VIP3Dmodel1", "VIP3Dmodel2")
-  strategies <- c("Original", sources, "VIP2D_intersect_VIP3Dmodel1",
-    "VIP2D_intersect_VIP3Dmodel2", "VIP3Dmodel1_intersect_VIP3Dmodel2",
-      "VIP2D_intersect_VIP3Dmodel1_intersect_VIP3Dmodel2")
-  if (!is.character(strategy) || length(strategy) != 1L || is.na(strategy) || !strategy %in%
-    strategies)
-    stop("Unsupported strategy; use Original, a VIP source, or its ordered intersection name.", call. = FALSE)
+  strategies <- .vip_strategies()
+  if (
+    !is.character(strategy) ||
+    length(strategy) != 1L ||
+    is.na(strategy) ||
+    !strategy %in% strategies
+  )
+    stop("Unsupported strategy. Use one of: ", paste(strategies, collapse = ", "), call. = FALSE)
   if (!is.numeric(thr) || is.complex(thr) || length(thr) != 1L || !is.finite(thr) ||
     thr < 0 || thr > 100)
     stop("thr must be one finite percentile between 0 and 100.", call. = FALSE)
@@ -214,12 +237,24 @@ print.vip_feature_sets <- function(x, ...) {
   times <- vips$time_names
   H <- vips$ncomp
   for (labels in list(features, times)) {
-    if (!is.character(labels) || !length(labels) || anyNA(labels) || any(!nzchar(labels)) ||
-      anyDuplicated(labels))
+    if (
+      !is.character(labels) ||
+      !length(labels) ||
+      anyNA(labels) ||
+      any(!nzchar(labels)) ||
+      anyDuplicated(labels)
+    )
       stop("VIP feature/time labels must be unique nonempty strings.", call. = FALSE)
   }
-  if (!is.numeric(H) || is.complex(H) || length(H) != 1L || !is.finite(H) || H <
-    1 || H > .Machine$integer.max || H != floor(H))
+  if (
+    !is.numeric(H) ||
+    is.complex(H) ||
+    length(H) != 1L ||
+    !is.finite(H) ||
+    H < 1 ||
+    H > .Machine$integer.max ||
+    H != floor(H)
+  )
     stop("VIP ncomp must be one positive integer.", call. = FALSE)
   H <- as.integer(H)
   p <- length(features)
@@ -237,19 +272,25 @@ print.vip_feature_sets <- function(x, ...) {
       times), M2_mean = list(features, times))
   for (nm in names(dims)) {
     a <- vips[[nm]]
-    if (!is.numeric(a) || is.complex(a) || is.null(dim(a)) || length(dim(a)) != length(dims[[nm]]) ||
-      !all(dim(a) == dims[[nm]]) || any(!is.finite(a)) || !identical(dimnames(a),
-      labels[[nm]]))
+    if (
+      !is.numeric(a) ||
+      is.complex(a) ||
+      is.null(dim(a)) ||
+      length(dim(a)) != length(dims[[nm]]) ||
+      !all(dim(a) == dims[[nm]]) ||
+      any(!is.finite(a)) ||
+      !identical(dimnames(a), labels[[nm]])
+    )
       stop(nm, " has missing/invalid values, dimensions or labels.", call. = FALSE)
   }
   thresholds <- list()
   if (strategy == "Original")
     selected <- features else {
-    sets <- vip_feature_sets(vips, thr = thr)
+    sets <- vip_feature_sets(vips, thr = thr, sources = .vip_strategy_sources(strategy))
     selected <- features[features %in% sets$sets[[strategy]]]
     used <- strsplit(strategy, "_intersect_", fixed = TRUE)[[1L]]
     thresholds <- stats::setNames(lapply(used, function(nm) {
-      a <- vips[[nm]]
+      a <- vips[[.vip_source_fields()[[nm]]]]
       stats::setNames(vapply(seq_len(ncol(a)), function(j)
         stats::quantile(a[, j],
         thr / 100, na.rm = TRUE, names = FALSE), numeric(1)), colnames(a))
@@ -258,4 +299,16 @@ print.vip_feature_sets <- function(x, ...) {
   list(selected_features = selected, selected_indices = match(selected, features),
     strategy = strategy,
     percentile = thr / 100, thresholds = thresholds)
+}
+
+.vip_source_fields <- function() {
+  c(VIP2D = "VIP2D", M1 = "VIP3Dmodel1", M2 = "M2_mean", VIP3Dmodel2 = "VIP3Dmodel2")
+}
+.vip_strategies <- function() {
+  c("Original", "VIP2D", "M1", "M2", "VIP3Dmodel2",
+    "VIP2D_intersect_M1", "VIP2D_intersect_M2", "M1_intersect_M2",
+    "VIP2D_intersect_M1_intersect_M2", "VIP2D_intersect_VIP3Dmodel2")
+}
+.vip_strategy_sources <- function(strategy) {
+  strsplit(strategy, "_intersect_", fixed = TRUE)[[1L]]
 }

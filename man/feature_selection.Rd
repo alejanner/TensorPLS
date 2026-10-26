@@ -2,8 +2,7 @@
 % Please edit documentation in R/featureSelection.R
 \name{feature_selection}
 \alias{feature_selection}
-\title{\code{VIP3Dmodel2}, \code{VIP2D}, or a mixOmics \code{vip()} matrix.
-This function is reccomended to be used if we have large dataset to improve NPLSDA results}
+\title{\code{VIP3Dmodel2}, \code{VIP2D}, or a mixOmics \code{vip()} matrix.}
 \usage{
 feature_selection(
   vip,
@@ -24,8 +23,10 @@ feature_selection(
 all columns.}
 
 \item{aggregator}{How to summarise across selected columns:
-* "any"  – keep if passes \strong{one} column (logical OR)
-* "mean" – percentile filter on the \strong{row‑wise mean}}
+\itemize{
+\item "any"  – keep if passes \strong{one} column (logical OR)
+\item "mean" – percentile filter on the \strong{row‑wise mean}
+}}
 
 \item{strip_time}{Logical. Remove the suffix matched by \code{pattern}.}
 
@@ -38,5 +39,4 @@ Character vector of selected variables (deduplicated)
 }
 \description{
 \code{VIP3Dmodel2}, \code{VIP2D}, or a mixOmics \code{vip()} matrix.
-This function is reccomended to be used if we have large dataset to improve NPLSDA results
 }
